@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.decomposition import PCA
 
 def my_rms(emg_window):
     return np.sqrt(np.mean(emg_window ** 2))
@@ -97,6 +98,24 @@ def get_zc(emg, window_len, step_len, thresh, fs):
         fea_idx += 1
     
     return zc_features
+def my_zc(sig, thresh):
+    """
+    计算零交叉数量。
+    
+    参数：
+    - sig: 输入的信号（1D数组）。
+    - thresh: 检测有效零交叉的阈值。
+    
+    返回：
+    - zc_value: 零交叉的数量。
+    """
+    N = len(sig)
+    zc_value = 0
+    for i in range(N - 1):
+        if abs(sig[i + 1] - sig[i]) > thresh and sig[i] * sig[i + 1] < 0:
+            zc_value += 1
+    return zc_value
+
 
 def get_ssc(emg, window_len, step_len, thresh, fs):
     """
@@ -128,3 +147,82 @@ def get_ssc(emg, window_len, step_len, thresh, fs):
         fea_idx += 1
     
     return ssc_features
+
+def my_ssc(sig, thresh):
+    """
+    计算斜率符号变化数量。
+    
+    参数：
+    - sig: 输入的信号（1D数组）。
+    - thresh: 检测有效斜率符号变化的阈值。
+    
+    返回：
+    - ssc_value: 斜率符号变化的数量。
+    """
+    N = len(sig)
+    ssc_value = 0
+    for i in range(1, N - 1):
+        if (sig[i] - sig[i - 1]) * (sig[i] - sig[i + 1]) > 0 and (
+            abs(sig[i + 1] - sig[i]) > thresh or abs(sig[i - 1] - sig[i]) > thresh):
+            ssc_value += 1
+    return ssc_value
+
+
+
+def feature_normalize(feature_train, feature_test, pca_active, dim):
+    """
+    归一化特征并执行PCA（如果pca_active==1）以降低维度。
+
+    参数:
+    - feature_train: numpy数组的列表，每个元素是训练试验的特征矩阵。
+    - feature_test: numpy数组的列表，每个元素是测试试验的特征矩阵。
+    - pca_active: 如果为1，执行PCA以降低维度。
+    - dim: 如果应用PCA，则保留的主成分数量。
+
+    返回:
+    - feature_train_norm: 训练试验的归一化特征矩阵列表。
+    - feature_test_norm: 测试试验的归一化特征矩阵列表。
+    """
+    # 确保feature_train和feature_test是数组的列表
+    if not isinstance(feature_train, list):
+        feature_train = [feature_train]
+    if not isinstance(feature_test, list):
+        feature_test = [feature_test]
+
+    # 连接所有训练特征以计算均值和标准差
+    feature_train_concat = np.hstack(feature_train)
+    
+    mean_val = np.mean(feature_train_concat, axis=1, keepdims=True)
+    std_val = np.std(feature_train_concat, axis=1, keepdims=True)
+
+    # 标准化训练和测试集的特征矩阵
+    feature_train_norm = []
+    feature_test_norm = []
+    
+    if pca_active == 1:
+        # 在PCA之前标准化特征
+        feature_train_concat = (feature_train_concat - mean_val) / std_val
+        pca = PCA(n_components=dim)
+        pca.fit(feature_train_concat.T)  # 对训练数据拟合PCA
+
+    # 归一化并可选地使用PCA降低训练数据的维度
+    for train_features in feature_train:
+        norm_train = (train_features - mean_val) / std_val
+        if pca_active == 1:
+            norm_train = np.dot(norm_train.T, pca.components_[:dim].T).T  # 应用PCA转换
+        feature_train_norm.append(norm_train)
+
+    # 归一化并可选地使用PCA降低测试数据的维度
+    for test_features in feature_test:
+        norm_test = (test_features - mean_val) / std_val
+        if pca_active == 1:
+            norm_test = np.dot(norm_test.T, pca.components_[:dim].T).T  # 应用PCA转换
+        feature_test_norm.append(norm_test)
+
+    # 如果只有一个测试/训练样本，返回numpy数组而不是列表
+    if len(feature_test_norm) == 1:
+        feature_test_norm = feature_test_norm[0]
+    if len(feature_train_norm) == 1:
+        feature_train_norm = feature_train_norm[0]
+
+    return feature_train_norm, feature_test_norm

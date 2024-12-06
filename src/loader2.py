@@ -4,6 +4,13 @@ from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
+from LDA_feature_extractor import (
+    get_rms,
+    get_wl,
+    get_zc,
+    get_ssc,
+    feature_normalize
+)
 
 # 加载数据
 data = sio.loadmat("")
@@ -71,3 +78,4 @@ for j in range(Ntrial):
 # 计算准确率
 accuracy = accuracy_score(label, predict_label)
 print(f"Accuracy: {accuracy}")
+
