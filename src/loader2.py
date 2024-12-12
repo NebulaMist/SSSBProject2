@@ -32,6 +32,7 @@ elif task == 'maintenance':
 zc_ssc_thresh = 0.0004  # 零交叉和斜率符号变化特征的阈值
 fs_emg = 2048  # 采样频率
 pca_active = 1  # 是否应用 PCA
+dim = 200  # PCA 主成分数量
 
 # 派生参数
 Nsample = int(np.ceil(window_len * fs_emg))
@@ -40,7 +41,7 @@ features = []
 
 # 循环遍历试验以提取特征
 for j in range(Ntrial):
-    emg = data[j][-Nsample:]  # 选择最后的 Nsample 样本
+    emg = data[0][j][-Nsample:]  # 选择最后的 Nsample 样本
     rms_tmp = get_rms(emg, window_len, step_len, fs_emg)
     wl_tmp = get_wl(emg, window_len, step_len, fs_emg)
     zc_tmp = get_zc(emg, window_len, step_len, zc_ssc_thresh, fs_emg)
@@ -66,7 +67,7 @@ for j in range(Ntrial):
     label_train = np.delete(label, j)
     
     # 归一化特征
-    feature_train_norm, feature_test_norm = feature_normalize(feature_train, feature_test, pca_active)
+    feature_train_norm, feature_test_norm = feature_normalize(feature_train, feature_test, pca_active,dim)
     
     # 训练 LDA 模型
     lda = LDA()
